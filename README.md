@@ -795,9 +795,9 @@ cargo run --release --bin pendulum_sliding_mode</code></pre>
 At the end of the workflow, you can watch the full implementation and walkthrough on YouTube.
 
 <!-- Replace YOUR_VIDEO_ID and YOUR_VIDEO_URL with your real link. -->
-<a href="https://www.youtube.com/watch?v=K-gh_15FszQ" target="_blank">
+<a href="" target="_blank">
   <img
-    src="https://i.ytimg.com/vi/K-gh_15FszQ/maxresdefault.jpg"
+    src="https://i.ytimg.com/vi/my_video/maxresdefault.jpg"
     alt="ODE/PDE in Rust - Implementation Tutorial"
     style="max-width: 100%; border-radius: 10px; box-shadow: 0 6px 18px rgba(0,0,0,0.18); margin-top: 0.5rem;"
   />
