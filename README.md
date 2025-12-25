@@ -647,54 +647,87 @@ Main components:
 
 ## Operating system guides (Windows / macOS / Linux)
 
-### Windows 10/11
+### Windows 10/11 (MSVC toolchain)
 
-#### 1) Install Rust
+This project targets the <strong>MSVC</strong> Rust toolchain on Windows. The most reliable approach is to build from the
+<strong>Developer PowerShell for VS 2022</strong> (or the <strong>x64 Native Tools Command Prompt</strong>), because it pre-configures the
+MSVC compiler + linker environment.
 
-Use Rustup:
+#### Recommended workflow (Developer PowerShell)
 
+1) Install prerequisites:
 <ul>
-  <li><a href="https://www.rust-lang.org/tools/install" target="_blank">https://www.rust-lang.org/tools/install</a></li>
+  <li><strong>Rust</strong> (Rustup) using the <code>x86_64-pc-windows-msvc</code> toolchain</li>
+  <li><strong>Visual Studio 2022 Build Tools</strong> with the workload: <em>Desktop development with C++</em></li>
+  <li><strong>Windows 10/11 SDK</strong> (installed with the Build Tools when selected)</li>
 </ul>
 
-After installation, confirm:
+2) Open: <strong>Developer PowerShell for VS 2022</strong>.
 
-<pre><code>rustc --version
-cargo --version</code></pre>
+3) Build and run:
+<pre><code>cd path\to\ODE_PDE_RUST
+cargo build --release
+cargo run --release --bin heat2d
+cargo run --release --bin pendulum_sliding_mode</code></pre>
 
-#### 2) Optional: Install FFmpeg
+#### If you see linker errors (kernel32.lib not found / wrong link.exe)
 
-If you want automatic MP4 output:
+Some Windows environments (especially when MSYS2 / Git Bash is installed) can accidentally pick up a non-MSVC <code>link.exe</code>.
+If you see errors referencing paths like <code>C:\msys64\usr\bin\link.exe</code>, you can explicitly configure the MSVC libraries and linker
+inside PowerShell before building.
 
-- Install FFmpeg and ensure <code>ffmpeg</code> works in a fresh terminal:
-  <pre><code>ffmpeg -version</code></pre>
+Run the following PowerShell commands (edit the version/path to match your machine):
 
-#### 3) Run using CMD
+<pre><code># 1) MSVC version you have (taken from your MSVC folder name)
+#    Change this to match your system.
+#    How to find it:
+#      Open:   C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\
+#      Pick the newest folder name (example: 14.44.35207)
+$msvcVer = "14.44.35207"
 
-From the repository root:
+# 2) MSVC lib directory (x64)
+#    This is the MSVC toolchain library directory used by the linker.
+#    If you installed Visual Studio in a different edition/location, you may need to adjust the base path.
+$msvcLib = "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\$msvcVer\lib\x64"
 
-<pre><code>cargo run --release --bin heat2d
+# 3) Windows SDK (Windows Kits) library directories
+#    The script below auto-selects the newest installed SDK version under:
+#      C:\Program Files (x86)\Windows Kits\10\Lib\
+#    If your Windows Kits is installed elsewhere, update $sdkRoot.
+$sdkRoot = "C:\Program Files (x86)\Windows Kits\10\Lib"
+$sdkVer  = (Get-ChildItem $sdkRoot -Directory | Sort-Object Name -Descending | Select-Object -First 1).Name
+
+#    These two are required for Windows system libraries:
+#      - um\x64   (contains kernel32.lib, user32.lib, etc.)
+#      - ucrt\x64 (contains Universal CRT libraries)
+$umLib   = Join-Path $sdkRoot "$sdkVer\um\x64"
+$ucrtLib = Join-Path $sdkRoot "$sdkVer\ucrt\x64"
+
+# 4) Sanity checks
+#    These should print: True / True
+#    If either prints False, your installation is missing components or paths are wrong.
+Test-Path (Join-Path $umLib "kernel32.lib")
+Test-Path (Join-Path $msvcLib "msvcrt.lib")
+
+# 5) Tell the linker where to find .lib files (critical on Windows)
+#    We prepend MSVC + Windows SDK library paths to the LIB environment variable.
+#    This helps avoid "kernel32.lib not found" and related linker errors.
+$env:LIB = "$msvcLib;$ucrtLib;$umLib;$env:LIB"
+
+# 6) Force Cargo to use MSVC's linker (NOT MSYS2/Git's link.exe)
+#    Change this path if your MSVC version differs or if Visual Studio is installed elsewhere.
+$env:CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER = "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\bin\Hostx64\x64\link.exe"
+
+# 7) Build and run from the repository root (where Cargo.toml is)
+#    Update this path to your clone location.
+cd "$env:USERPROFILE\Desktop\ODE_PDE_Rust-main\ODE_PDE_Rust-main"
+
+#    Clean (optional) then build and run the binaries.
+cargo clean
+cargo build --release
+cargo run --release --bin heat2d
 cargo run --release --bin pendulum_sliding_mode
-
-REM optional preview
-cargo run --release --bin pendulum_sliding_mode -- --preview</code></pre>
-
-#### 4) Run using Git Bash
-
-From the repository root:
-
-<pre><code>cargo run --release --bin heat2d
-cargo run --release --bin pendulum_sliding_mode
-
-# optional preview
-cargo run --release --bin pendulum_sliding_mode -- --preview</code></pre>
-
-#### 5) Manual MP4 encoding (if needed)
-
-If the program does not auto-encode, run:
-
-<pre><code>ffmpeg -y -framerate 180 -i output/pendulum_sliding_mode/frames/frame_%06d.png \
-  -c:v libx264 -pix_fmt yuv420p output/pendulum_sliding_mode/pendulum.mp4</code></pre>
+</code></pre>
 
 ### macOS (Homebrew)
 
